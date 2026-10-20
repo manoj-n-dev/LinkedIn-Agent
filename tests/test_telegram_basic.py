@@ -3,10 +3,10 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from telegram import Chat, Message, Update, User
 
 from src.config import Settings
-from src.telegram.handlers import help_command, start_command
-from telegram import Chat, Message, Update, User
+from src.telegram_bot.handlers import help_command, start_command
 
 
 @pytest.fixture

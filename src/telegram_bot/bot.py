@@ -3,7 +3,7 @@
 from telegram.ext import Application, ApplicationBuilder, CommandHandler
 
 from src.config import Settings
-from src.telegram.handlers import help_command, start_command
+from src.telegram_bot.handlers import help_command, start_command
 
 
 def build_bot_app(settings: Settings) -> Application:

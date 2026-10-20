@@ -1,9 +1,9 @@
 """Telegram command handlers for Phase 2 (FR-002, FR-031)."""
 
+from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.config import Settings
-from telegram import Update
 
 
 def build_start_message(settings: Settings) -> str:

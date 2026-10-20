@@ -5,7 +5,7 @@ import sys
 
 from src.config import ConfigError, load_settings
 from src.logging_config import setup_logging
-from src.telegram.bot import build_bot_app
+from src.telegram_bot.bot import build_bot_app
 
 logger = logging.getLogger(__name__)
 
