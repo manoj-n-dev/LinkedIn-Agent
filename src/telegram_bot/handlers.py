@@ -1,9 +1,10 @@
-"""Telegram command handlers for Phase 2 (FR-002, FR-031)."""
+"""Telegram command handlers (FR-001, FR-002, FR-031, SEC-001, SEC-002)."""
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.config import Settings
+from src.telegram_bot.auth import owner_only
 
 
 def build_start_message(settings: Settings) -> str:
@@ -41,8 +42,9 @@ def build_help_message() -> str:
     )
 
 
+@owner_only
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /start command."""
+    """Handle /start command (owner only)."""
     if not update.effective_message:
         return
     settings: Settings = context.bot_data.get("settings")  # type: ignore[assignment]
@@ -50,8 +52,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.effective_message.reply_text(text)
 
 
+@owner_only
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /help command."""
+    """Handle /help command (owner only)."""
     if not update.effective_message:
         return
     text = build_help_message()
