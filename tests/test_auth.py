@@ -12,7 +12,13 @@ import pytest
 from telegram import CallbackQuery, Chat, Message, Update, User
 
 from src.config import Settings
+from src.telegram_bot.approval_handlers import approve_command, reject_command
 from src.telegram_bot.auth import owner_only
+from src.telegram_bot.control_handlers import (
+    pause_command,
+    resume_command,
+    status_command,
+)
 from src.telegram_bot.draft_handlers import (
     comment_command,
     draft_command,
@@ -116,6 +122,11 @@ async def test_auth_03_every_handler_rejects_non_owner(test_settings):
         drafts_command,
         report_command,
         trends_command,
+        status_command,
+        pause_command,
+        resume_command,
+        approve_command,
+        reject_command,
     ]
 
     for handler in handlers_to_fuzz:

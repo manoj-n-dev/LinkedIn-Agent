@@ -1,9 +1,19 @@
 """Telegram Bot Application factory."""
 
 from sqlalchemy.orm import Session, sessionmaker
-from telegram.ext import Application, ApplicationBuilder, CommandHandler
+from telegram.ext import Application, ApplicationBuilder, CallbackQueryHandler, CommandHandler
 
 from src.config import Settings
+from src.telegram_bot.approval_handlers import (
+    approve_command,
+    decision_callback_handler,
+    reject_command,
+)
+from src.telegram_bot.control_handlers import (
+    pause_command,
+    resume_command,
+    status_command,
+)
 from src.telegram_bot.draft_handlers import (
     comment_command,
     draft_command,
@@ -35,6 +45,9 @@ def build_bot_app(
 
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("status", status_command))
+    app.add_handler(CommandHandler("pause", pause_command))
+    app.add_handler(CommandHandler("resume", resume_command))
     app.add_handler(CommandHandler("draft", draft_command))
     app.add_handler(CommandHandler("comment", comment_command))
     app.add_handler(CommandHandler("note", note_command))
@@ -42,5 +55,8 @@ def build_bot_app(
     app.add_handler(CommandHandler("drafts", drafts_command))
     app.add_handler(CommandHandler("report", report_command))
     app.add_handler(CommandHandler("trends", trends_command))
+    app.add_handler(CommandHandler("approve", approve_command))
+    app.add_handler(CommandHandler("reject", reject_command))
+    app.add_handler(CallbackQueryHandler(decision_callback_handler))
 
     return app
