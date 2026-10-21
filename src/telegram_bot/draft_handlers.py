@@ -92,20 +92,42 @@ async def draft_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"📝 Draft [{draft.code}] (v{draft.version}):\n\n"
             f"{draft.body}"
             f"{warning_text}\n\n"
-            f"💡 To revise: /revise {draft.code} <your feedback>"
+            f"💡 To tweak: /revise {draft.code} <your instructions>"
         )
-        keyboard = InlineKeyboardMarkup(
-            [
+
+        from src.services.approval_service import ApprovalService
+
+        try:
+            approval_svc = ApprovalService(session)
+            _, app_tok, rej_tok, _ = approval_svc.request_approval(draft.code)
+            keyboard = InlineKeyboardMarkup(
                 [
-                    InlineKeyboardButton(
-                        "🖼️ Generate Image", callback_data=f"gen_img:{draft.code}"
-                    ),
-                    InlineKeyboardButton(
-                        "✅ Review & Approve", callback_data=f"review_appr:{draft.code}"
-                    ),
+                    [
+                        InlineKeyboardButton(
+                            "🖼️ Add Visual Image", callback_data=f"gen_img:{draft.code}"
+                        ),
+                        InlineKeyboardButton(
+                            "✅ Approve Post", callback_data=app_tok.token
+                        ),
+                        InlineKeyboardButton(
+                            "❌ Reject", callback_data=rej_tok.token
+                        ),
+                    ]
                 ]
-            ]
-        )
+            )
+        except Exception:
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🖼️ Add Visual Image", callback_data=f"gen_img:{draft.code}"
+                        ),
+                        InlineKeyboardButton(
+                            "✅ Approve", callback_data=f"review_appr:{draft.code}"
+                        ),
+                    ]
+                ]
+            )
         await update.effective_message.reply_text(reply, reply_markup=keyboard)
 
 
@@ -266,18 +288,40 @@ async def revise_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"{new_draft.body}\n\n"
             f"Prior approvals (if any) have been voided."
         )
-        keyboard = InlineKeyboardMarkup(
-            [
+
+        from src.services.approval_service import ApprovalService
+
+        try:
+            approval_svc = ApprovalService(session)
+            _, app_tok, rej_tok, _ = approval_svc.request_approval(new_draft.code)
+            keyboard = InlineKeyboardMarkup(
                 [
-                    InlineKeyboardButton(
-                        "🖼️ Generate Image", callback_data=f"gen_img:{new_draft.code}"
-                    ),
-                    InlineKeyboardButton(
-                        "✅ Review & Approve", callback_data=f"review_appr:{new_draft.code}"
-                    ),
+                    [
+                        InlineKeyboardButton(
+                            "🖼️ Add Visual Image", callback_data=f"gen_img:{new_draft.code}"
+                        ),
+                        InlineKeyboardButton(
+                            "✅ Approve Post", callback_data=app_tok.token
+                        ),
+                        InlineKeyboardButton(
+                            "❌ Reject", callback_data=rej_tok.token
+                        ),
+                    ]
                 ]
-            ]
-        )
+            )
+        except Exception:
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🖼️ Add Visual Image", callback_data=f"gen_img:{new_draft.code}"
+                        ),
+                        InlineKeyboardButton(
+                            "✅ Approve", callback_data=f"review_appr:{new_draft.code}"
+                        ),
+                    ]
+                ]
+            )
         await update.effective_message.reply_text(reply, reply_markup=keyboard)
 
 
@@ -296,21 +340,57 @@ async def image_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     draft_code = parts[1].strip()
+    from src.telegram_bot.approval_handlers import get_or_create_approval_tokens
+
     with _get_db(context) as session:
         draft = session.execute(select(Draft).where(Draft.code == draft_code)).scalar_one_or_none()
         if not draft:
             await update.effective_message.reply_text(f"⚠️ Draft '{draft_code}' not found.")
             return
         body = draft.body
+        try:
+            app_tok_str, rej_tok_str = get_or_create_approval_tokens(session, draft_code)
+        except Exception:
+            app_tok_str, rej_tok_str = "", ""
 
-    await update.effective_message.reply_text("🎨 Generating your LinkedIn visual graphic...")
+    settings: Settings = context.bot_data["settings"]
+    await update.effective_message.reply_text("🎨 Creating custom, watermark-free visual...")
     try:
-        from src.services.image_service import get_post_image_url
+        from src.services.image_service import (
+            download_and_clean_image,
+            generate_smart_image_prompt,
+            get_post_image_url,
+        )
 
-        image_url = get_post_image_url(body)
+        prompt = await generate_smart_image_prompt(
+            body,
+            api_key=settings.groq_api_key,
+            model=settings.groq_model,
+        )
+        image_url = get_post_image_url(prompt)
+        clean_buf = await download_and_clean_image(image_url)
+
+        keyboard_buttons = [
+            InlineKeyboardButton("🔄 New Variation", callback_data=f"gen_img:{draft_code}")
+        ]
+        if app_tok_str and rej_tok_str:
+            keyboard_buttons.append(
+                InlineKeyboardButton("✅ Approve with Image", callback_data=app_tok_str)
+            )
+            keyboard_buttons.append(
+                InlineKeyboardButton("❌ Reject", callback_data=rej_tok_str)
+            )
+
+        keyboard = InlineKeyboardMarkup([keyboard_buttons])
+        caption = (
+            f"🖼️ Cover Graphic for [{draft_code}]\n\n"
+            f"💡 Scene: {prompt[:140]}...\n\n"
+            "Ready to pair with your LinkedIn post! 🚀"
+        )
         await update.effective_message.reply_photo(
-            photo=image_url,
-            caption=f"🖼️ Cover Graphic for [{draft_code}]\n\nReady to pair with your LinkedIn post!",
+            photo=clean_buf,
+            caption=caption,
+            reply_markup=keyboard,
         )
     except Exception as exc:
         logger.error("Failed to generate image: %s", exc)

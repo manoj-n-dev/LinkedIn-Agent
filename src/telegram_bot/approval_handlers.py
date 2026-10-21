@@ -4,6 +4,7 @@ Covers FR-006, FR-017.
 """
 
 import logging
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -11,9 +12,14 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from src.config import Settings
-from src.db.models import Approval, Draft
+from src.db.models import Approval, CallbackToken, Draft
 from src.db.session import create_db_engine, get_session_factory
 from src.services.approval_service import ApprovalService
+from src.services.image_service import (
+    download_and_clean_image,
+    generate_smart_image_prompt,
+    get_post_image_url,
+)
 from src.telegram_bot.auth import owner_only
 
 logger = logging.getLogger(__name__)
@@ -28,6 +34,47 @@ def _get_db(context: ContextTypes.DEFAULT_TYPE) -> Session:
         factory = get_session_factory(engine)
         context.bot_data["db_session_factory"] = factory
     return factory()
+
+
+def get_or_create_approval_tokens(session: Session, draft_code: str) -> tuple[str, str]:
+    """Get existing active approval tokens or generate a new approval request pair."""
+    draft = session.execute(select(Draft).where(Draft.code == draft_code)).scalar_one_or_none()
+    if not draft:
+        raise ValueError(f"Draft '{draft_code}' not found.")
+
+    service = ApprovalService(session)
+    now = datetime.now(UTC)
+
+    pending = session.execute(
+        select(Approval).where(
+            Approval.draft_id == draft.id,
+            Approval.decision == "pending",
+            Approval.expires_at > now,
+        )
+    ).scalar_one_or_none()
+
+    if pending:
+        app_tok = session.execute(
+            select(CallbackToken).where(
+                CallbackToken.approval_id == pending.id,
+                CallbackToken.purpose == "approve",
+                CallbackToken.used_at.is_(None),
+                CallbackToken.expires_at > now,
+            )
+        ).scalar_one_or_none()
+        rej_tok = session.execute(
+            select(CallbackToken).where(
+                CallbackToken.approval_id == pending.id,
+                CallbackToken.purpose == "reject",
+                CallbackToken.used_at.is_(None),
+                CallbackToken.expires_at > now,
+            )
+        ).scalar_one_or_none()
+        if app_tok and rej_tok:
+            return app_tok.token, rej_tok.token
+
+    _, app_tok_obj, rej_tok_obj, _ = service.request_approval(draft_code)
+    return app_tok_obj.token, rej_tok_obj.token
 
 
 @owner_only
@@ -112,7 +159,7 @@ async def reject_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 @owner_only
 async def decision_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle single-use button press for approve/reject (FR-006, SEC-002, SEC-013)."""
+    """Handle button press for approve/reject/image generation (FR-006, SEC-002, SEC-013)."""
     query = update.callback_query
     if not query:
         return
@@ -122,7 +169,7 @@ async def decision_callback_handler(update: Update, context: ContextTypes.DEFAUL
 
     if token_str.startswith("gen_img:"):
         draft_code = token_str.split(":", 1)[1]
-        await query.answer("🎨 Generating cover image...")
+        await query.answer("🎨 Generating authentic, watermark-free visual...")
         with _get_db(context) as session:
             draft = (
                 session.execute(select(Draft).where(Draft.code == draft_code)).scalar_one_or_none()
@@ -132,22 +179,47 @@ async def decision_callback_handler(update: Update, context: ContextTypes.DEFAUL
                     await query.message.reply_text(f"⚠️ Draft '{draft_code}' not found.")
                 return
             body = draft.body
+            try:
+                app_tok_str, rej_tok_str = get_or_create_approval_tokens(session, draft_code)
+            except Exception:
+                app_tok_str, rej_tok_str = "", ""
 
         try:
-            from src.services.image_service import get_post_image_url
+            prompt = await generate_smart_image_prompt(
+                body,
+                api_key=settings.groq_api_key,
+                model=settings.groq_model,
+            )
+            image_url = get_post_image_url(prompt)
+            clean_buf = await download_and_clean_image(image_url)
 
-            image_url = get_post_image_url(body)
             if query.message:
-                await query.message.reply_photo(
-                    photo=image_url,
-                    caption=(
-                        f"🖼️ Cover Graphic for [{draft_code}]\n\n"
-                        "Ready to pair with your LinkedIn post! 🚀"
-                    ),
+                keyboard_buttons = [
+                    InlineKeyboardButton("🔄 New Variation", callback_data=f"gen_img:{draft_code}")
+                ]
+                if app_tok_str and rej_tok_str:
+                    keyboard_buttons.append(
+                        InlineKeyboardButton("✅ Approve with Image", callback_data=app_tok_str)
+                    )
+                    keyboard_buttons.append(
+                        InlineKeyboardButton("❌ Reject", callback_data=rej_tok_str)
+                    )
+
+                keyboard = InlineKeyboardMarkup([keyboard_buttons])
+                caption = (
+                    f"🖼️ Visual Graphic for [{draft_code}]\n\n"
+                    f"💡 Scene: {prompt[:140]}...\n\n"
+                    "📌 Ready to pair with your LinkedIn post! 🚀"
                 )
-        except Exception:
+                await query.message.reply_photo(
+                    photo=clean_buf,
+                    caption=caption,
+                    reply_markup=keyboard,
+                )
+        except Exception as exc:
+            logger.error("Image generation or cleaning failed: %s", exc)
             if query.message:
-                err_msg = f"⚠️ Image generation failed. Try /image {draft_code}"
+                err_msg = f"⚠️ Image generation failed. You can retry with /image {draft_code}"
                 await query.message.reply_text(err_msg)
         return
 
@@ -184,10 +256,20 @@ async def decision_callback_handler(update: Update, context: ContextTypes.DEFAUL
 
     await query.answer()
 
-    # Edit the message to remove buttons and show decision status
-    current_text = query.message.text if query.message else ""
-    updated_text = f"{current_text}\n\n📌 Decision: {message}"
-    try:
-        await query.edit_message_text(text=updated_text, reply_markup=None)
-    except Exception as exc:
-        logger.debug("Failed editing callback message: %s", exc)
+    # Edit the message to remove buttons and show decision status cleanly
+    if query.message:
+        if query.message.photo:
+            current_caption = query.message.caption or ""
+            updated_caption = f"{current_caption}\n\n📌 Decision: {message}"
+            try:
+                await query.edit_message_caption(caption=updated_caption, reply_markup=None)
+            except Exception as exc:
+                logger.debug("Failed editing callback photo caption: %s", exc)
+        elif query.message.text:
+            current_text = query.message.text
+            updated_text = f"{current_text}\n\n📌 Decision: {message}"
+            try:
+                await query.edit_message_text(text=updated_text, reply_markup=None)
+            except Exception as exc:
+                logger.debug("Failed editing callback text: %s", exc)
+
