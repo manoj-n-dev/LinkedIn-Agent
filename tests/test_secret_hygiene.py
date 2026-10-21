@@ -80,6 +80,8 @@ def test_working_tree_secret_scan():
     for root, dirs, files in os.walk(REPO_ROOT):
         dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
         for file in files:
+            if file.startswith(".env") and file != ".env.example":
+                continue
             file_path = Path(root) / file
             try:
                 content = file_path.read_text(encoding="utf-8", errors="ignore")

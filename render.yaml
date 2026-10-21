@@ -17,7 +17,9 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        value: qwen/qwen3.8-27b
+      - key: TIMEZONE
+        value: Asia/Kolkata
       - key: TELEGRAM_WEBHOOK_SECRET
         generateValue: true
       - key: TOKEN_ENCRYPTION_KEY
