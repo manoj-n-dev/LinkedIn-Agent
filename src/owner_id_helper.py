@@ -60,6 +60,9 @@ async def run_id_helper(bot_token: str) -> None:
 
 def main() -> None:
     """Entry point for running the helper from terminal."""
+    from dotenv import load_dotenv
+
+    load_dotenv()
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not bot_token or bot_token == PLACEHOLDER_MARKER:  # noqa: S105
         bot_token = input("Enter your TELEGRAM_BOT_TOKEN from @BotFather: ").strip()
