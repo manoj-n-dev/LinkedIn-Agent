@@ -20,7 +20,11 @@ target_metadata = Base.metadata
 
 def get_url() -> str:
     """Return database URL from environment or alembic.ini."""
-    return os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url") or "sqlite:///linkedin_agent.db"
+    return (
+        os.environ.get("DATABASE_URL")
+        or config.get_main_option("sqlalchemy.url")
+        or "sqlite:///linkedin_agent.db"
+    )
 
 
 def run_migrations_offline() -> None:

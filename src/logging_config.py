@@ -39,9 +39,7 @@ class RedactingFilter(logging.Filter):
 def setup_logging(level: int = logging.INFO) -> None:
     """Configure root logger with the RedactingFilter."""
     handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
     handler.addFilter(RedactingFilter())
 
     root_logger = logging.getLogger()

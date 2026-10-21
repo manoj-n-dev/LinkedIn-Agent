@@ -119,9 +119,7 @@ class Draft(Base):
     """Post, comment, and connection-note drafts with version tracking."""
 
     __tablename__ = "drafts"
-    __table_args__ = (
-        UniqueConstraint("parent_id", "version", name="unique_draft_version"),
-    )
+    __table_args__ = (UniqueConstraint("parent_id", "version", name="unique_draft_version"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     code: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
@@ -248,9 +246,7 @@ class JobRun(Base):
     """Record of an external scheduled tick execution; unique slot prevents duplicate runs."""
 
     __tablename__ = "job_runs"
-    __table_args__ = (
-        UniqueConstraint("job_name", "slot", name="job_slot_once"),
-    )
+    __table_args__ = (UniqueConstraint("job_name", "slot", name="job_slot_once"),)
 
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     job_name: Mapped[str] = mapped_column(Text, nullable=False)

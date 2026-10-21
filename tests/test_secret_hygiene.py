@@ -6,14 +6,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-EXCLUDE_DIRS = frozenset({
-    ".git",
-    ".pytest_cache",
-    ".ruff_cache",
-    "__pycache__",
-    ".venv",
-    "venv",
-})
+EXCLUDE_DIRS = frozenset(
+    {
+        ".git",
+        ".pytest_cache",
+        ".ruff_cache",
+        "__pycache__",
+        ".venv",
+        "venv",
+    }
+)
 
 
 def test_gitignore_covers_sensitive_files():
@@ -23,9 +25,7 @@ def test_gitignore_covers_sensitive_files():
 
     content = gitignore_path.read_text(encoding="utf-8")
     lines = [
-        line.strip()
-        for line in content.splitlines()
-        if line.strip() and not line.startswith("#")
+        line.strip() for line in content.splitlines() if line.strip() and not line.startswith("#")
     ]
 
     assert ".env" in lines, ".env must be ignored"
@@ -83,8 +83,6 @@ def test_working_tree_secret_scan():
             rel_path = file_path.relative_to(REPO_ROOT)
             for pattern in suspicious_patterns:
                 match = pattern.search(content)
-                assert match is None, (
-                    f"Secret pattern '{pattern.pattern}' found in {rel_path}"
-                )
+                assert match is None, f"Secret pattern '{pattern.pattern}' found in {rel_path}"
 
     assert scanned_files > 0, "Working tree scan must inspect repository files"

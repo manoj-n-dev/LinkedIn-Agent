@@ -24,9 +24,7 @@ class ConfigError(Exception):
     def __init__(self, bad_setting_names: list[str]):
         self.bad_setting_names = sorted(bad_setting_names)
         names_str = ", ".join(self.bad_setting_names)
-        super().__init__(
-            f"Configuration error: Invalid or placeholder settings: {names_str}"
-        )
+        super().__init__(f"Configuration error: Invalid or placeholder settings: {names_str}")
 
 
 class Settings(NamedTuple):

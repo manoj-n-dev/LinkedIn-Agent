@@ -13,6 +13,13 @@ from telegram import CallbackQuery, Chat, Message, Update, User
 
 from src.config import Settings
 from src.telegram_bot.auth import owner_only
+from src.telegram_bot.draft_handlers import (
+    comment_command,
+    draft_command,
+    drafts_command,
+    note_command,
+    revise_command,
+)
 from src.telegram_bot.handlers import help_command, start_command
 
 OWNER_ID = 111111111
@@ -98,7 +105,15 @@ async def test_auth_02_non_owner_button_tap_ignored(test_settings):
 @pytest.mark.asyncio
 async def test_auth_03_every_handler_rejects_non_owner(test_settings):
     """T-AUTH-03: Fuzz over all registered handlers with a non-owner ID (SEC-002)."""
-    handlers_to_fuzz = [start_command, help_command]
+    handlers_to_fuzz = [
+        start_command,
+        help_command,
+        draft_command,
+        comment_command,
+        note_command,
+        revise_command,
+        drafts_command,
+    ]
 
     for handler in handlers_to_fuzz:
         update, reply_mock = build_mock_update(user_id=STRANGER_ID, is_callback=False)
