@@ -12,6 +12,7 @@ from src.telegram_bot.draft_handlers import (
     revise_command,
 )
 from src.telegram_bot.handlers import help_command, start_command
+from src.telegram_bot.research_handlers import report_command, trends_command
 
 
 def build_bot_app(
@@ -39,5 +40,7 @@ def build_bot_app(
     app.add_handler(CommandHandler("note", note_command))
     app.add_handler(CommandHandler("revise", revise_command))
     app.add_handler(CommandHandler("drafts", drafts_command))
+    app.add_handler(CommandHandler("report", report_command))
+    app.add_handler(CommandHandler("trends", trends_command))
 
     return app

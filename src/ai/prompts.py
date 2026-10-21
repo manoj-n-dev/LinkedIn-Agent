@@ -134,3 +134,33 @@ def build_revision_prompt(
         f"Revision instruction:\n{instruction.strip()}\n</untrusted_user_input>"
     )
     return system_prompt, user_content
+
+
+BRIEFING_SYSTEM_INSTRUCTIONS = """
+Analyze the provided research items and produce a structured daily briefing.
+CRITICAL RULES:
+1. For EACH item, output exactly:
+   ITEM: <item_index>
+   FACT: One concise sentence summarizing only what the source stated.
+   INTERPRETATION: 1-2 sentences on why this matters or developer impact.
+2. At the end, output:
+   SUGGESTIONS:
+   - 2 to 4 suggested post ideas or angles based on these items.
+3. NEVER claim anything is "trending on LinkedIn".
+4. Do NOT invent URLs or statistics.
+"""
+
+
+def build_briefing_prompt(
+    items_text: str,
+    tone: str = "friendly, honest, curious, professional",
+    language: str = "English",
+) -> tuple[str, str]:
+    """Build system and user prompts for daily briefing fact/interpretation separation."""
+    system_prompt = (
+        f"{BASE_SYSTEM_PROMPT.format(tone=tone, language=language)}\n{BRIEFING_SYSTEM_INSTRUCTIONS}"
+    )
+    user_content = (
+        f"<untrusted_user_input>\nResearch items:\n{items_text.strip()}\n</untrusted_user_input>"
+    )
+    return system_prompt, user_content

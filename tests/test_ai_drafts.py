@@ -250,9 +250,7 @@ async def test_draft_revision_creates_version_and_voids_approvals(
     mock_resp1 = {
         "choices": [{"message": {"role": "assistant", "content": "Original draft body."}}]
     }
-    mock_resp2 = {
-        "choices": [{"message": {"role": "assistant", "content": "Revised draft body."}}]
-    }
+    mock_resp2 = {"choices": [{"message": {"role": "assistant", "content": "Revised draft body."}}]}
 
     with respx.mock() as respx_mock:
         respx_mock.post(GROQ_API_URL).respond(200, json=mock_resp1)
