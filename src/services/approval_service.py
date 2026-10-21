@@ -297,13 +297,26 @@ class ApprovalService:
         )
         drafts_count = len(self.db.execute(select(Draft)).scalars().all())
 
+        from src.services.linkedin_oauth_service import LinkedInOAuthService
+
         state_icon = "⏸️ PAUSED" if cfg.paused else "▶️ ACTIVE"
         kill_icon = "🛑 ACTIVE" if kill_switch else "OFF"
         pub_icon = "ENABLED" if cfg.publishing_enabled else "DISABLED (drafts only)"
 
+        li_status = LinkedInOAuthService(self.db).get_connection_status()
+        if li_status["connected"]:
+            days = li_status["days_remaining"]
+            warn = " ⚠️ (Renewal needed soon!)" if li_status.get("warning_needed") else ""
+            li_str = f"Connected ({days} days left){warn}"
+        elif li_status["status"] == "expired":
+            li_str = "Expired (Reconnect with /connect)"
+        else:
+            li_str = "Not Connected (Drafts-only mode)"
+
         return (
             f"🤖 Bot Status Overview:\n\n"
             f"State: {state_icon}\n"
+            f"LinkedIn: {li_str}\n"
             f"Publishing: {pub_icon}\n"
             f"Kill Switch: {kill_icon}\n"
             f"Briefing Time: {cfg.briefing_time} ({cfg.timezone})\n"

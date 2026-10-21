@@ -22,6 +22,11 @@ from src.telegram_bot.draft_handlers import (
     revise_command,
 )
 from src.telegram_bot.handlers import help_command, start_command
+from src.telegram_bot.oauth_handlers import (
+    connect_command,
+    connect_token_command,
+    disconnect_command,
+)
 from src.telegram_bot.research_handlers import report_command, trends_command
 
 
@@ -48,6 +53,9 @@ def build_bot_app(
     app.add_handler(CommandHandler("status", status_command))
     app.add_handler(CommandHandler("pause", pause_command))
     app.add_handler(CommandHandler("resume", resume_command))
+    app.add_handler(CommandHandler("connect", connect_command))
+    app.add_handler(CommandHandler("connect_token", connect_token_command))
+    app.add_handler(CommandHandler("disconnect", disconnect_command))
     app.add_handler(CommandHandler("draft", draft_command))
     app.add_handler(CommandHandler("comment", comment_command))
     app.add_handler(CommandHandler("note", note_command))

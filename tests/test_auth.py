@@ -27,6 +27,11 @@ from src.telegram_bot.draft_handlers import (
     revise_command,
 )
 from src.telegram_bot.handlers import help_command, start_command
+from src.telegram_bot.oauth_handlers import (
+    connect_command,
+    connect_token_command,
+    disconnect_command,
+)
 from src.telegram_bot.research_handlers import report_command, trends_command
 
 OWNER_ID = 111111111
@@ -127,6 +132,9 @@ async def test_auth_03_every_handler_rejects_non_owner(test_settings):
         resume_command,
         approve_command,
         reject_command,
+        connect_command,
+        connect_token_command,
+        disconnect_command,
     ]
 
     for handler in handlers_to_fuzz:
