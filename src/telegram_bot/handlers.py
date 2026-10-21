@@ -7,11 +7,33 @@ from src.config import Settings
 from src.telegram_bot.auth import owner_only
 
 
+def get_ist_greeting(display_name: str) -> str:
+    """Return friendly, natural time-of-day greeting in IST."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    try:
+        ist_now = datetime.now(ZoneInfo("Asia/Kolkata"))
+        hour = ist_now.hour
+    except Exception:
+        hour = 12
+
+    name = f" {display_name}" if display_name else ""
+    if 5 <= hour < 12:
+        return f"Good morning{name}! ☀️"
+    elif 12 <= hour < 17:
+        return f"Good afternoon{name}! ⛅"
+    else:
+        return f"Good evening{name}! 🌙"
+
+
 def build_start_message(settings: Settings) -> str:
-    """Format welcome message according to docs/04 section 4.1."""
+    """Format welcome message according to docs/04 section 4.1 with IST greeting."""
     greeting = f"Hi {settings.owner_display_name}." if settings.owner_display_name else "Hi."
+    ist_greet = get_ist_greeting(settings.owner_display_name)
     return (
         f"{greeting} I am your private LinkedIn helper.\n"
+        f"🌟 {ist_greet}\n"
         "I write drafts and briefings. I never post, like, comment or message\n"
         "by myself. You always decide.\n"
         "Type /help to see what I can do."
@@ -28,6 +50,7 @@ def build_help_message() -> str:
         "/report - Latest daily briefing (or regenerate)\n"
         "/trends - Topic scan from news, RSS, Hacker News\n"
         "/draft <idea> - New post draft\n"
+        "/image <code> - Generate cover graphic for draft\n"
         "/comment - Comment drafts for text you paste\n"
         "/connections - Connection-note drafts and networking ideas\n"
         "/schedule - Schedule an approved draft\n"

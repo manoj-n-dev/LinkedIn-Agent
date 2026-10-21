@@ -4,7 +4,7 @@ import logging
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from src.ai.groq_client import (
@@ -92,9 +92,21 @@ async def draft_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"📝 Draft [{draft.code}] (v{draft.version}):\n\n"
             f"{draft.body}"
             f"{warning_text}\n\n"
-            f"To revise: /revise {draft.code} <your changes>"
+            f"💡 To revise: /revise {draft.code} <your feedback>"
         )
-        await update.effective_message.reply_text(reply)
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🖼️ Generate Image", callback_data=f"gen_img:{draft.code}"
+                    ),
+                    InlineKeyboardButton(
+                        "✅ Review & Approve", callback_data=f"review_appr:{draft.code}"
+                    ),
+                ]
+            ]
+        )
+        await update.effective_message.reply_text(reply, reply_markup=keyboard)
 
 
 @owner_only
@@ -254,7 +266,55 @@ async def revise_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"{new_draft.body}\n\n"
             f"Prior approvals (if any) have been voided."
         )
-        await update.effective_message.reply_text(reply)
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🖼️ Generate Image", callback_data=f"gen_img:{new_draft.code}"
+                    ),
+                    InlineKeyboardButton(
+                        "✅ Review & Approve", callback_data=f"review_appr:{new_draft.code}"
+                    ),
+                ]
+            ]
+        )
+        await update.effective_message.reply_text(reply, reply_markup=keyboard)
+
+
+@owner_only
+async def image_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /image <draft_code> — generate a visual cover image for a draft."""
+    if not update.effective_message:
+        return
+
+    text = update.effective_message.text or ""
+    parts = text.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        await update.effective_message.reply_text(
+            "Please provide a draft code to generate an image for.\nExample: /image d-a1b2c3"
+        )
+        return
+
+    draft_code = parts[1].strip()
+    with _get_db(context) as session:
+        draft = session.execute(select(Draft).where(Draft.code == draft_code)).scalar_one_or_none()
+        if not draft:
+            await update.effective_message.reply_text(f"⚠️ Draft '{draft_code}' not found.")
+            return
+        body = draft.body
+
+    await update.effective_message.reply_text("🎨 Generating your LinkedIn visual graphic...")
+    try:
+        from src.services.image_service import get_post_image_url
+
+        image_url = get_post_image_url(body)
+        await update.effective_message.reply_photo(
+            photo=image_url,
+            caption=f"🖼️ Cover Graphic for [{draft_code}]\n\nReady to pair with your LinkedIn post!",
+        )
+    except Exception as exc:
+        logger.error("Failed to generate image: %s", exc)
+        await update.effective_message.reply_text("⚠️ Could not generate image. Please try again.")
 
 
 @owner_only

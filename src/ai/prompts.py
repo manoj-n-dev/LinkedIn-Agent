@@ -26,12 +26,26 @@ CRITICAL CONTENT AND SAFETY RULES:
 """
 
 POST_SYSTEM_INSTRUCTIONS = """
-Create a compelling LinkedIn post draft based on the user's idea or context.
-Guidelines:
-- Length: 600 to 1,300 characters is ideal. Keep it well under 3,000 characters.
-- Structure: A clear hook on the first line, 2-4 short readable paragraphs,
-  and a closing takeaway or question.
-- Format:
+Create an authentic, magnetic LinkedIn post draft that sounds 100% human-written
+by a real practitioner sharing an honest insight, micro-story, or hard-won lesson.
+
+CRITICAL VOICE & STYLE RULES:
+- STORYTELLING HOOK: The first line must instantly hook the reader with an unfiltered
+  observation, counter-intuitive lesson, or real moment (e.g. "I spent 2 weeks building the wrong
+  thing.", "Most devs get this backwards:", "Unpopular opinion:").
+- ZERO AI CLICHÉS: STRICTLY FORBIDDEN: "delve", "testament", "tapestry", "in the fast-paced world",
+  "game-changer", "revolutionize", "beacon", "unleash", "furthermore", "in conclusion", "elevate",
+  "let's explore".
+- CASUAL & RELATABLE: Use natural contractions (I've, you'll, don't, it's). Write in a grounded,
+  punchy tone like a real founder or engineer writing a candid post from their phone or laptop.
+- SHORT PUNCHY BULLETS: 2 to 4 bullet points with natural emojis (⚡, 💡, 👉, 📌, 🚀)
+  summarizing key takeaways clearly.
+- HUMAN CADENCE: Break lines frequently (1-2 sentences max per paragraph). Keep generous whitespace.
+- CLEAR TAKEAWAY & CONNECTION CTA: End with a sharp conclusion and an open conversational
+  question that makes people eager to comment and connect.
+- LENGTH: 500 to 1,100 characters. Clean, tight, no corporate fluff.
+
+Format:
 <POST>
 [Draft text here]
 </POST>
@@ -137,15 +151,17 @@ def build_revision_prompt(
 
 
 BRIEFING_SYSTEM_INSTRUCTIONS = """
-Analyze the provided research items and produce a structured daily briefing.
+Analyze the provided tech and AI market research items and produce a structured briefing.
 CRITICAL RULES:
 1. For EACH item, output exactly:
    ITEM: <item_index>
    FACT: One concise sentence summarizing only what the source stated.
-   INTERPRETATION: 1-2 sentences on why this matters or developer impact.
+   INTERPRETATION: 1-2 sentences on why this matters to developers and the current AI market.
 2. At the end, output:
    SUGGESTIONS:
-   - 2 to 4 suggested post ideas or angles based on these items.
+   Provide 3 to 4 specific high-reach LinkedIn post concepts based on these items:
+   - What post angles get maximum reach & connections (e.g. breakdowns, comparisons).
+   - A scroll-stopping hook for each concept.
 3. NEVER claim anything is "trending on LinkedIn".
 4. Do NOT invent URLs or statistics.
 """
@@ -164,3 +180,16 @@ def build_briefing_prompt(
         f"<untrusted_user_input>\nResearch items:\n{items_text.strip()}\n</untrusted_user_input>"
     )
     return system_prompt, user_content
+
+
+def build_image_prompt(post_text: str) -> str:
+    """Extract core visual theme and return an aesthetic prompt for Pollinations AI."""
+    import re
+    # Clean text to 8-10 key descriptive words
+    clean = re.sub(r"[^\w\s]", "", post_text[:250])
+    words = [w for w in clean.split() if len(w) > 3][:8]
+    theme = " ".join(words) if words else "modern software development and artificial intelligence"
+    return (
+        "minimalist sleek 3D tech concept art, glowing neon accents, "
+        f"developer workspace, {theme}, high quality, cinematic lighting"
+    )

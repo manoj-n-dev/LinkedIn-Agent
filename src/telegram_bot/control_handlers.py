@@ -70,7 +70,10 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         service = ApprovalService(session)
         msg = service.get_status_overview(
             owner_telegram_id=settings.owner_telegram_id,
-            kill_switch=settings.kill_switch,
         )
 
-    await update.effective_message.reply_text(msg)
+    from src.telegram_bot.handlers import get_ist_greeting
+
+    greeting = get_ist_greeting(settings.owner_display_name)
+    full_msg = f"{greeting}\n\n{msg}"
+    await update.effective_message.reply_text(full_msg)

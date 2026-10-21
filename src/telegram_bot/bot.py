@@ -18,6 +18,7 @@ from src.telegram_bot.draft_handlers import (
     comment_command,
     draft_command,
     drafts_command,
+    image_command,
     note_command,
     revise_command,
 )
@@ -58,6 +59,7 @@ def build_bot_app(
     app.add_handler(CommandHandler("connect_token", connect_token_command))
     app.add_handler(CommandHandler("disconnect", disconnect_command))
     app.add_handler(CommandHandler("draft", draft_command))
+    app.add_handler(CommandHandler("image", image_command))
     app.add_handler(CommandHandler("comment", comment_command))
     app.add_handler(CommandHandler("note", note_command))
     app.add_handler(CommandHandler("revise", revise_command))

@@ -120,6 +120,61 @@ async def decision_callback_handler(update: Update, context: ContextTypes.DEFAUL
     token_str = query.data or ""
     settings: Settings = context.bot_data["settings"]
 
+    if token_str.startswith("gen_img:"):
+        draft_code = token_str.split(":", 1)[1]
+        await query.answer("🎨 Generating cover image...")
+        with _get_db(context) as session:
+            draft = (
+                session.execute(select(Draft).where(Draft.code == draft_code)).scalar_one_or_none()
+            )
+            if not draft:
+                if query.message:
+                    await query.message.reply_text(f"⚠️ Draft '{draft_code}' not found.")
+                return
+            body = draft.body
+
+        try:
+            from src.services.image_service import get_post_image_url
+
+            image_url = get_post_image_url(body)
+            if query.message:
+                await query.message.reply_photo(
+                    photo=image_url,
+                    caption=(
+                        f"🖼️ Cover Graphic for [{draft_code}]\n\n"
+                        "Ready to pair with your LinkedIn post! 🚀"
+                    ),
+                )
+        except Exception:
+            if query.message:
+                err_msg = f"⚠️ Image generation failed. Try /image {draft_code}"
+                await query.message.reply_text(err_msg)
+        return
+
+    if token_str.startswith("review_appr:"):
+        draft_code = token_str.split(":", 1)[1]
+        await query.answer()
+        with _get_db(context) as session:
+            service = ApprovalService(session)
+            try:
+                _, approve_tok, reject_tok, preview = service.request_approval(draft_code)
+            except ValueError as exc:
+                if query.message:
+                    await query.message.reply_text(f"⚠️ {exc}")
+                return
+
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("✅ Approve", callback_data=approve_tok.token),
+                        InlineKeyboardButton("❌ Reject", callback_data=reject_tok.token),
+                    ]
+                ]
+            )
+            if query.message:
+                await query.message.reply_text(preview, reply_markup=keyboard)
+        return
+
     with _get_db(context) as session:
         service = ApprovalService(session)
         success, message, _ = service.handle_callback_decision(
