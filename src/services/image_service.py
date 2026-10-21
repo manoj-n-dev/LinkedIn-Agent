@@ -54,8 +54,16 @@ async def generate_smart_image_prompt(post_text: str, api_key: str = "", model: 
     return build_image_prompt(post_text)
 
 
+class ImageRateLimitError(Exception):
+    """Raised when the free image generator is in a cooldown period."""
+
+    def __init__(self, retry_after: int):
+        self.retry_after = retry_after
+        super().__init__(f"Image generator cooldown: please wait {retry_after}s.")
+
+
 def get_post_image_url(visual_prompt: str, seed: int | None = None) -> str:
-    """Generate a clean 1200x700 LinkedIn graphic URL (cropped to 1200x630 watermark-free).
+    """Generate a clean graphic URL using the Pollinations free tier.
 
     Args:
         visual_prompt: The detailed visual description.
@@ -68,30 +76,55 @@ def get_post_image_url(visual_prompt: str, seed: int | None = None) -> str:
     encoded = urllib.parse.quote(clean_prompt)
     random_seed = seed or (100000 + secrets.randbelow(899999))
     base_url = "https://image.pollinations.ai/prompt"
-    # Request 1200x700 so we can crop the bottom 70px to eliminate any watermark
-    params = f"width=1200&height=700&seed={random_seed}&model=flux"
+    # Omit custom width/height to avoid Pollinations 402 payment requirements on free tier
+    params = f"seed={random_seed}"
     return f"{base_url}/{encoded}?{params}"
 
 
-async def download_and_clean_image(image_url: str, crop_bottom_px: int = 70) -> io.BytesIO:
+async def download_and_clean_image(image_url: str, crop_bottom_px: int = 50) -> io.BytesIO:
     """Download image and remove bottom watermark strip, returning pristine 1200x630 bytes.
 
     Args:
         image_url: The image URL to fetch.
-        crop_bottom_px: Height of bottom watermark strip to crop out (default 70px).
+        crop_bottom_px: Height of bottom watermark strip to crop out (default 50px).
 
     Returns:
         io.BytesIO: Buffer containing pristine watermark-free JPEG bytes.
+
+    Raises:
+        ImageRateLimitError: If Pollinations rate limit is reached.
     """
-    async with httpx.AsyncClient(timeout=35.0) as client:
+    import asyncio
+    import re
+
+    async with httpx.AsyncClient(timeout=35.0, follow_redirects=True) as client:
         resp = await client.get(image_url)
+        if resp.status_code == 402:
+            retry_secs = 15
+            try:
+                err_data = resp.json()
+                msg = err_data.get("error", {}).get("message", "")
+                match = re.search(r"Retry after (\d+)s", msg)
+                if match:
+                    retry_secs = int(match.group(1))
+            except Exception as exc:
+                logger.debug("Failed parsing 402 retry cooldown: %s", exc)
+
+            # Auto-retry if wait is brief (<= 6s)
+            if 0 < retry_secs <= 6:
+                await asyncio.sleep(retry_secs + 1)
+                resp = await client.get(image_url)
+
+            if resp.status_code == 402:
+                raise ImageRateLimitError(retry_secs)
+
         resp.raise_for_status()
         raw_bytes = resp.content
 
     img = Image.open(io.BytesIO(raw_bytes))
     w, h = img.size
 
-    # Crop the bottom banner containing platform watermarks
+    # Crop the bottom banner containing platform watermarks (approx 50px)
     crop_height = max(100, h - crop_bottom_px)
     cropped = img.crop((0, 0, w, crop_height))
 

@@ -42,11 +42,9 @@ async def test_generate_smart_image_prompt_ai_success():
 
 
 def test_get_post_image_url_params():
-    """Verify get_post_image_url formats URL with 1200x700 for watermark-safe cropping."""
+    """Verify get_post_image_url formats URL with seed for Pollinations free tier."""
     url = get_post_image_url("developer at clean desk", seed=12345)
     assert "image.pollinations.ai" in url
-    assert "width=1200" in url
-    assert "height=700" in url
     assert "seed=12345" in url
 
 

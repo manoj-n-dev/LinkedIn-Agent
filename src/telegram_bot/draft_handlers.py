@@ -357,6 +357,7 @@ async def image_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.effective_message.reply_text("🎨 Creating custom, watermark-free visual...")
     try:
         from src.services.image_service import (
+            ImageRateLimitError,
             download_and_clean_image,
             generate_smart_image_prompt,
             get_post_image_url,
@@ -392,9 +393,16 @@ async def image_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             caption=caption,
             reply_markup=keyboard,
         )
+    except ImageRateLimitError as exc:
+        await update.effective_message.reply_text(
+            f"⏳ Free visual generator cooldown active ({exc.retry_after}s remaining).\n"
+            f"Please wait a moment and try again: /image {draft_code}"
+        )
     except Exception as exc:
         logger.error("Failed to generate image: %s", exc)
-        await update.effective_message.reply_text("⚠️ Could not generate image. Please try again.")
+        await update.effective_message.reply_text(
+            f"⚠️ Could not generate image right now. Please try again: /image {draft_code}"
+        )
 
 
 @owner_only

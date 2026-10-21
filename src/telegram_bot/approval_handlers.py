@@ -16,6 +16,7 @@ from src.db.models import Approval, CallbackToken, Draft
 from src.db.session import create_db_engine, get_session_factory
 from src.services.approval_service import ApprovalService
 from src.services.image_service import (
+    ImageRateLimitError,
     download_and_clean_image,
     generate_smart_image_prompt,
     get_post_image_url,
@@ -216,6 +217,13 @@ async def decision_callback_handler(update: Update, context: ContextTypes.DEFAUL
                     caption=caption,
                     reply_markup=keyboard,
                 )
+        except ImageRateLimitError as exc:
+            if query.message:
+                wait_msg = (
+                    f"⏳ Image generator cooldown active ({exc.retry_after}s remaining).\n"
+                    f"Please wait a moment and tap again, or use:\n/image {draft_code}"
+                )
+                await query.message.reply_text(wait_msg)
         except Exception as exc:
             logger.error("Image generation or cleaning failed: %s", exc)
             if query.message:
