@@ -19,20 +19,20 @@ A private, single-owner AI assistant inside Telegram for research, drafting, and
 
 ```mermaid
 flowchart TD
-    User([Owner on Telegram]) <-->|Private Chat / Webhook| TG[Telegram Bot]
-    TG --> Auth{Owner Check}
-    Auth -->|Non-Owner| Drop[Silent Drop / Zero Reply]
-    Auth -->|Owner| Core[Bot Core Services]
+    User(["Owner on Telegram"]) -->|"Private Chat / Webhook"| TG["Telegram Bot"]
+    TG --> Auth{"Owner Check"}
+    Auth -->|"Non-Owner"| Drop["Silent Drop / Zero Reply"]
+    Auth -->|"Owner"| Core["Bot Core Services"]
 
-    Core --> AI[Groq Llama 3 Client<br/>Prompt Isolation]
-    Core --> Res[Research Engine<br/>HN Firebase + RSS]
-    Core --> Appr[Approval Engine<br/>SHA-256 Hash + Expiry]
-    
-    Appr --> Gate{External Action Gate<br/>9-Step Verification}
-    Gate -->|Refused / Paused| Block[Block & Audit]
-    Gate -->|Approved| LI[Official LinkedIn API<br/>REST Posts API]
-    
-    Core --> DB[(PostgreSQL / SQLite<br/>Fernet Encrypted Tokens)]
+    Core --> AI["Groq Llama 3 Client<br>Prompt Isolation"]
+    Core --> Res["Research Engine<br>HN Firebase + RSS"]
+    Core --> Appr["Approval Engine<br>SHA-256 Hash + Expiry"]
+
+    Appr --> Gate{"External Action Gate<br>9-Step Verification"}
+    Gate -->|"Refused / Paused"| Block["Block & Audit"]
+    Gate -->|"Approved"| LI["Official LinkedIn API<br>REST Posts API"]
+
+    Core --> DB[("PostgreSQL / SQLite<br>Fernet Encrypted Tokens")]
 ```
 
 ---
