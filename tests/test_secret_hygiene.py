@@ -36,9 +36,16 @@ def test_gitignore_covers_sensitive_files():
 
 
 def test_env_file_not_committed():
-    """.env file must never exist or be committed in repository."""
-    env_path = REPO_ROOT / ".env"
-    assert not env_path.exists(), ".env file must not be committed to repository"
+    """.env file must never be tracked or committed in git repository."""
+    import subprocess
+    result = subprocess.run(
+        ["git", "ls-files", ".env"],  # noqa: S603, S607
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.stdout.strip() == "", ".env file must not be tracked in git"
 
 
 def test_env_example_contains_placeholders_only():

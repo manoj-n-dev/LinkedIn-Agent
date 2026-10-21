@@ -37,3 +37,6 @@ logs/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Planning and design drafts
+linkedin-telegram-ai-assistant/
