@@ -27,6 +27,7 @@ from src.telegram_bot.oauth_handlers import (
     connect_token_command,
     disconnect_command,
 )
+from src.telegram_bot.publish_handlers import publish_command
 from src.telegram_bot.research_handlers import report_command, trends_command
 
 
@@ -65,6 +66,7 @@ def build_bot_app(
     app.add_handler(CommandHandler("trends", trends_command))
     app.add_handler(CommandHandler("approve", approve_command))
     app.add_handler(CommandHandler("reject", reject_command))
+    app.add_handler(CommandHandler("publish", publish_command))
     app.add_handler(CallbackQueryHandler(decision_callback_handler))
 
     return app
